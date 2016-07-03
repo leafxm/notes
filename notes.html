@@ -1,0 +1,235 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>便签</title>
+  <style>
+    .column {
+      height: 200px;
+      width: 200px;
+      float: left;
+      margin-right: 5px;
+      margin-bottom:5px;  
+      box-sizing:border-box;   
+    }
+    .note {
+         cursor: move;
+         padding:0.25em 2.25em 2.25em 0.25em;
+          overflow-y: auto;  
+    }
+    .column header {
+      text-align:left;
+       cursor: default;
+       background-color:#e5e5e5;
+       width:20px;
+    }
+    #add{
+      font-size: 54px;
+      border: 1px solid black;
+      line-height:194px;
+       text-align: center; 
+    }
+    .inputbox{
+        border: 1px solid black;
+        font-size:16px; 
+        cursor: text;
+        overflow-y: auto; 
+        display: none;
+    }
+    #textinput{
+        padding:0.5em;
+        width:cal(100%-1em);
+        min-height:76%;
+        border:1px solid #a0b3d6;
+    }
+    #colorpicker{
+        padding:0.25em 0.5em;
+        cursor:default;
+    }
+    #colorpicker span{
+        display:inline-block;
+        width:16px;
+        height:16px;
+    }
+     #btn_ok:last-of-type{
+        display:inline-block;
+        float:right;
+        width:26px;
+        text-align:center;
+        background-color:#cccccc;
+        box-shadow:1px 1px 1px;
+        border-radius:2px;
+     }
+     @media (max-width:720px){
+        .column {
+          height: 200px;
+          width: 48%;
+          float: left;
+          margin-right: 5px;  
+          box-sizing:border-box;   
+        }
+     }
+  </style>
+</head>
+<body>
+  <div id="columns">
+    
+  </div>
+      <div class="column" id="add" >+</div>
+      <div class="column inputbox">
+            <div id="colorpicker">
+                <span style="background-color:#ccccff">√</span>
+                <span style="background-color:#ff9999"></span>
+                <span style="background-color:#99ccff"></span>
+                <span style="background-color:#99cc33"></span>
+                <div id="btn_ok">ok</div>
+            </div>
+            <div id="textinput" contentEditable="true">
+            </div>
+        </div>
+     
+<script type="text/javascript" >
+window.onload = function(){
+  var Note = (function(){
+    var dragEL; //保存被拖拽的对象
+    //构造便签的构造函数
+    function Note(target,text,color,className,keyObj,key) {
+      //初始化要用的参数
+      this.target = target;
+      this.text = text;
+      this.color = color;
+      this.className = className;
+      //设置随机key和本地存储
+      if(!keyObj[key]){
+        var key = parseInt(Math.random()*1000)
+        while(keyObj[key]==true){
+          key = parseInt(Math.random()*1000);
+        }
+        keyObj[key] = true;
+        var data = {color:this.color,text:this.text.data};
+        window.localStorage.setItem(key, JSON.stringify(data));
+      }
+      this.key = key;
+      this.keyObj = keyObj;
+      //初始化
+      this.init();
+    }
+    Note.prototype.init = function() {
+      this.initDom(); //初始化DOM结构
+      this.initEvent(); //初始化事件
+    }
+    Note.prototype.initDom = function(){
+       var div = document.createElement("div");
+        div.draggable = "ture";
+        div.className = this.className;
+        var header = document.createElement("header");
+        header.innerHTML="×";
+        div.appendChild(header);
+        div.appendChild(this.text);
+        div.style.background="linear-gradient(to left top, transparent 50%, rgba(0, 0, 0, 0.4) 0px) no-repeat 100% 100% / 2em 2em , linear-gradient(-45deg, transparent 1.4em, "+this.color+" 0px) " ;
+        this.target.appendChild(div);  //添加
+        this.dom = div;
+    }
+    Note.prototype.initEvent = function(){
+      //点击header中的×删除note的事件
+       this.dom.addEventListener("click",function(event){
+            if (event.target.tagName.toLowerCase() == "header"){
+                this.target.removeChild(this.dom);
+                 window.localStorage.removeItem(this.key);
+                 delete this.keyObj[this.key];
+            }
+        }.bind(this));
+      //拖拽排序事件
+      this.dom.addEventListener("dragstart",function(e){
+          this.style.opacity = 0.5;
+          dragEL = e.target;
+          e.dataTransfer.effectAllowed="move";
+      })
+      this.dom.addEventListener("dragend",function(e){
+          this.style.opacity = 1;
+      })
+      this.dom.addEventListener("dragover",function(e){
+          if(e.preventDefault){
+            e.preventDefault();
+          }
+        })
+      this.dom.addEventListener("drop",function(e){   
+          var column = this.target.children;
+          if(index(e.target,column)>index(dragEL,column)){
+              this.target.insertBefore(dragEL,e.target.nextSibling);
+          }else{
+            this.target.insertBefore(dragEL,e.target);
+          }
+      }.bind(this))
+
+      function index(current,obj){
+        var len = obj.length;
+        while(len--){
+          if(current == obj[len]){
+            return len;
+          }
+        }
+      }
+    }
+    return Note;
+  })();
+
+  var columns = document.getElementById("columns"),
+    add = document.getElementById("add"),
+    inputbox =document.querySelector(".inputbox"),
+    textinput=document.getElementById("textinput"),
+    colorpicker = document.getElementById("colorpicker"); 
+  
+  var bKey = JSON.parse(window.localStorage.getItem('keyObj'));
+  var keyObj = bKey?bKey:{};
+  window.localStorage.setItem('keyObj','{}')
+  for(var key in keyObj){
+      var note = JSON.parse(window.localStorage.getItem(key));
+      var text = document.createTextNode(note.text);
+      new Note(columns,text,note.color,"column note",keyObj,key);
+       
+  }
+
+  var color = "#ccccff";
+  add.addEventListener("click",function(){
+   add.style.display="none";
+   inputbox.style.display="block";  
+  })
+
+  textinput.addEventListener("keydown",function(e){
+     if(e.keyCode==13){
+        addNote();
+    }
+  })
+
+  colorpicker.addEventListener("click",function(e){
+    if(e.target.tagName.toLowerCase()==="span"){
+        color = e.target.style.backgroundColor;
+        var span = colorpicker.getElementsByTagName("span");
+        var len =span.length;
+        for(var i=0;i<len;i++){
+            span[i].innerHTML = "";
+        }
+        e.target.innerHTML="√";
+    }else if(e.target.id.toLowerCase()==="btn_ok"){
+        addNote();
+    }
+  })
+  
+  function addNote(){
+    var text = document.createTextNode(textinput.innerText);
+    new Note(columns,text,color,"column note",keyObj);
+    textinput.innerText="";
+    add.style.display="block";
+    inputbox.style.display="none";
+  }
+  window.onbeforeunload = function(){
+     window.localStorage.setItem('keyObj',JSON.stringify(keyObj));
+  }
+}
+
+
+</script>
+</body>
+</html>
