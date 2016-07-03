@@ -101,6 +101,7 @@ window.onload = function(){
       this.color = color;
       this.className = className;
       //设置随机key和本地存储
+      keyObj = keyObj || {}
       if(!keyObj[key]){
         var key = parseInt(Math.random()*1000)
         while(keyObj[key]==true){
